@@ -321,3 +321,4 @@ if __name__ == "__main__":
             start_main_app(date_val)
         lic_win = LicenseWindow(reload_after_activation)
         lic_win.mainloop()
+        
