@@ -1,0 +1,52 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get Date
+      id: get-date
+      run: |
+        echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+    - name: Cache Buildozer global directory
+      uses: actions/cache@v4
+      with:
+        path: ~/.buildozer
+        key: buildozer-global-${{ runner.os }}-${{ steps.get-date.outputs.date }}
+
+    - name: Setup Android SDK/NDK
+      run: |
+        sudo apt update
+        sudo apt install -y python3-pip python3-dev git zip unzip openjdk-17-jdk autoconf automake libtool pkg-config zlib1g-dev libncurses5-dev libssl-dev cmake
+        pip3 install --user buildozer
+
+    - name: Create Spec File
+      run: |
+        if [ ! -f buildozer.spec ]; then
+          ~/.local/bin/buildozer init
+          # Configuration lines direct inject kar rahe hain
+          sed -i 's/title = My Application/title = Leads Extractor/g' buildozer.spec
+          sed -i 's/package.name = myapp/package.name = gmiextractor/g' buildozer.spec
+          sed -i 's/requirements = python3,kivy/requirements = python3,kivy,requests,kivymd,jnius/g' buildozer.spec
+          sed -i 's/#android.archs = arm64-v8a, armeabi-v7a/android.archs = arm64-v8a/g' buildozer.spec
+        fi
+
+    - name: Build with Buildozer
+      run: |
+        ~/.local/bin/buildozer -v android debug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-debug-apk
+        path: bin/*.apk
